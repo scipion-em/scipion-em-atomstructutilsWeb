@@ -25,12 +25,17 @@
 # **************************************************************************
 import os
 import sys
+from pathlib import Path
+import time
+import webbrowser
 
 from bioinformatics.objects import SetOfDatabaseID, DatabaseID
 import pyworkflow.object as pwobj
 from pwem.protocols import EMProtocol
 from pwem.convert.atom_struct import AtomicStructHandler
 from pyworkflow.protocol.params import (EnumParam, PointerParam, StringParam)
+
+DALISERVER="ekhidna2.biocenter.helsinki.fi"
 
 
 class ProtBioinformaticsDali(EMProtocol):
@@ -60,15 +65,70 @@ class ProtBioinformaticsDali(EMProtocol):
 
     # --------------------------- INSERT steps functions --------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep('searchStep',self.inputStructure.get().getFileName())
+        self._insertFunctionStep('searchStep', self.inputStructure.get().getFileName())
+        self._insertFunctionStep('getURLoutStep')
 
     def searchStep(self, structFileName):
         outFileName = self._getExtraPath("atomStruct.pdb")
         aStruct1 = AtomicStructHandler(structFileName)
         aStruct1.write(outFileName)
-        args='-F "file1=@%s" -F "method=%s" -F "title=%s"  -F "address=%s" http://ekhidna.biocenter.helsinki.fi/cgi-bin/dali/dump.cgi' %\
+        args='-vs -F "file1=@%s" -F "method=%s" -F "title=%s"  -F "address=%s" http://ekhidna.biocenter.helsinki.fi/cgi-bin/dali/dump.cgi' %\
              (outFileName,self.methodsDict[self.method.get()],self.title.get(),self.email.get())
-        self.runJob("curl",args)
+        self.runJob("curl", args)
+
+
+    def getURLoutStep(self):
+        dir_out = self._getPath(os.path.join("logs", "run.stdout"))
+
+        with open(dir_out,"r") as output:
+            for line in output:
+                if line.startswith("< Location"):
+                    url = line.split(" ")[2]
+
+        download_not = True
+        fnDir = self._getExtraPath(DALISERVER)
+        while download_not:
+            fnBaseDir = self.checkResults(url)
+            number_files = 0
+            for _ in Path(fnDir).rglob('*.html'):
+                number_files += 1
+            if number_files > 1:
+                download_not = False
+            else:
+                time.sleep(600) # 10min
+
+        self.viewResults(fnBaseDir)
+
+
+    def getResultsDir(self):
+        fnDir = self._getExtraPath(DALISERVER)
+        fnBaseDir = None
+        for fn in Path(fnDir).rglob('*.html'):
+            if fn.name == "index.html":
+                fnBaseDir = str(fn.parent)
+                break
+        return fnBaseDir
+
+
+    def checkResults(self, url, e=None):
+        #fnBaseDir = self.getResultsDir()
+        #if not fnBaseDir:
+        if os.path.exists(self._getExtraPath(DALISERVER)):
+            os.system("rm -rf %s"%self._getExtraPath(DALISERVER))
+        if not url.endswith("index.html"):
+            url+="/index.html"
+        os.system('cd %s; wget -r --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 5 %s'%(self._getExtraPath(),url))
+        fnBaseDir = self.getResultsDir()
+
+        return fnBaseDir
+
+
+    def viewResults(self, fnBaseDir):
+        if fnBaseDir:
+            webbrowser.open_new_tab(os.path.join(fnBaseDir, "index.html"))
+            if not hasattr(self, "outputIds"):
+                for fn in Path(fnBaseDir).rglob('*.txt'):
+                    self.constructOutput(str(fn), self)
 
 
     # --------------------------- OUTPUT function ------------------
