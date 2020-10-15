@@ -44,7 +44,7 @@ class TestImportBase(BaseTest):
 
 
 class TestCreateOutput(TestImportBase):
-    """ Create a realistic output of Dali using an old job (pdb id used:6zow)
+    """ Create a realistic output of Dali using an old job (pdb id used: 5xjh)
     """
 
     def _importPDB(self, path):
@@ -96,7 +96,7 @@ class TestListOperate(TestCreateOutput):
         self.assertIsNotNone(outputDali, "Error in creation of SetOfDatabaseID by DALI - It is NONE")
         self.assertTrue(outputDali.getSize() == 432, "The size of the SetOfDatabaseID is wrong. It should be 432 ")
         n_columns = len(list(outputDali.getFirstItem().getAttributes()))
-        self.assertTrue(n_columns == 11)  # 2 fixed columns + 9 given
+        self.assertTrue(n_columns == 11, "The number of columns has changed. It should be 11")  # 2 fixed columns + 9 given
 
 
         # SET filtering :  _DaliZscore column ( >= 40)
@@ -129,7 +129,7 @@ class TestListOperate(TestCreateOutput):
         self.assertIsNotNone(setf, "Error in creation of a new filtered SetOfDatabaseID - It is NONE")
         self.assertTrue(setf.getSize()==8, "Error in filtering 25 >= value <= 52 of _DaliZscore column")
 
-        # SET filtering :  _DaliZscore column ( >= 40)
+        # SET filtering :  _pdbId column ( startwith 6)
         args = {'operation': 0,  # Filter
                 'inputSet': outputDali,
                 'filterColumn': '_pdbId',
@@ -143,7 +143,7 @@ class TestListOperate(TestCreateOutput):
         self.assertIsNotNone(setf, "Error in creation of a new filtered SetOfDatabaseID - It is NONE")
         self.assertTrue(setf.getSize() == 57, "Error in filtering >_pdbId column. Startwith does not work")
 
-        # SET filtering :  _DaliZscore column ( >= 40)
+        # SET filtering :  _DaliDescription column ( contains ESTERASE)
         args = {'operation': 0,  # Filter
                 'inputSet': outputDali,
                 'filterColumn': '_DaliDescription',
