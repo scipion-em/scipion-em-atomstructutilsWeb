@@ -177,7 +177,7 @@ class TestListOperate(TestCreateOutput):
         self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
         self.assertTrue(setf.getSize() == 432, "Error in creation of a new SetOfDatabaseID. It is different from the original regarding the number of entries")
         n_columns = len(list(setf.getFirstItem().getAttributes()))
-        self.assertTrue(n_columns == 2+2) #2 fixed columns + 2 given
+        self.assertTrue(n_columns == 2+2, "Error. The number on columns is wrong. It should be 4") #2 fixed columns + 2 given
 
 
     def test_3unique(self):
@@ -287,7 +287,7 @@ class TestListOperate(TestCreateOutput):
 
 
     def test_7sort(self):
-        """6. Sort (Ascending or Descending way) a SetOfDatabaseID regarding 1 column (_DaliZscore)
+        """7. Sort (Ascending or Descending way) a SetOfDatabaseID regarding 1 column (_DaliZscore)
         """
         print("\n Sort a SetOfDatabaseID regarding 1 column (Ascending or Descending way)")
 
