@@ -82,15 +82,18 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
         outputDict = {}
         if self.operation.get()==1:
             # Union
+            outputList = []
             for database in self.multipleInputListID:
                 for databaseEntry in database.get():
                     add=True
                     if self.removeDuplicates.get():
-                        add=not databaseEntry.getDbId() in outputDict
+                        add= not databaseEntry.getDbId() in outputDict
+
                     if add:
                         dbEntry = DatabaseID()
                         dbEntry.copy(databaseEntry, copyId=False)
                         outputDict[databaseEntry.getDbId()]=dbEntry
+                        outputList.append(dbEntry)  #Save in a list in order to avoid rewritten entries
 
         elif self.operation.get()==0 or self.operation.get()==2 or self.operation.get()==3:
             # Unique, Intersection, Difference
@@ -220,8 +223,20 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
                 if add:
                     outputDict[dbEntry.getDbId()] = dbEntry
 
+
         outputDatabaseID = SetOfDatabaseID().create(path=self._getPath())
-        for dbId in outputDict:
-            outputDatabaseID.append(outputDict[dbId])
+
+        if self.operation.get() == 1:
+            for entry in range(len(outputList)):
+                outputDatabaseID.append(outputList[entry])
+        else:
+            for dbId in outputDict:
+                outputDatabaseID.append(outputDict[dbId])
+
         self._defineOutputs(output=outputDatabaseID)
-        self._defineSourceRelation(self.inputListID, outputDatabaseID)
+
+        if self.operation.get() == 1:
+            for inputListID in self.multipleInputListID:
+                self._defineSourceRelation(inputListID, outputDatabaseID)
+        else:
+            self._defineSourceRelation(self.inputListID, outputDatabaseID)
