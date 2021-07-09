@@ -40,5 +40,6 @@ from .protocol_preparation_receptor import ProtBioinformaticsADTPrepareReceptor
 from .protocol_preparation_ligands import ProtBioinformaticsADTPrepareLigands
 from .protocol_ZINC_filter import ProtBioinformaticsZINCFilter
 from .protocol_autodock import ProtBioinformaticsAutodock
+from .protocol_autoligand import ProtBioinformaticsAutoLigand
 from .protocol_pubchem_search import ProtBioinformaticsPubChemSearch
 from .protocol_export_csv import ProtBioinformaticsExportCSV
