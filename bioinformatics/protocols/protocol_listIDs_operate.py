@@ -68,8 +68,11 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
         form.addParam('filterValue', StringParam,
                        label='Value:', condition='(operation==6)',
                        help='Value to use in the filter')
+        form.addParam('filterValue2', StringParam,
+                      label='Lower Value:', condition='(operation==6 and filterOp==6)',
+                      help='Value to use in the filter')
         form.addParam('removeDuplicates', BooleanParam, default=False,
-                       label='Remove duplicates:', condition='(operation!=1)')
+                       label='Remove duplicates:', condition='(operation!=0)')
 
     # --------------------------- INSERT steps functions --------------------
     def _insertAllSteps(self):
@@ -79,15 +82,19 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
         outputDict = {}
         if self.operation.get()==1:
             # Union
+            outputList = []
             for database in self.multipleInputListID:
                 for databaseEntry in database.get():
                     add=True
                     if self.removeDuplicates.get():
-                        add=not databaseEntry.getDbId() in outputDict
+                        add= not databaseEntry.getDbId() in outputDict
+
                     if add:
                         dbEntry = DatabaseID()
                         dbEntry.copy(databaseEntry, copyId=False)
                         outputDict[databaseEntry.getDbId()]=dbEntry
+                        outputList.append(dbEntry)  #Save in a list in order to avoid rewritten entries
+
         elif self.operation.get()==0 or self.operation.get()==2 or self.operation.get()==3:
             # Unique, Intersection, Difference
             outputList2 = []
@@ -111,6 +118,7 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
                     dbEntry = DatabaseID()
                     dbEntry.copy(databaseEntry)
                     outputDict[databaseEntry.getDbId()]=dbEntry
+
         elif self.operation.get()==4:
             # Change ID
             newLabel=True
@@ -133,6 +141,7 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
                     add = add and not dbEntry.getDbId() in outputDict
                 if add:
                     outputDict[dbEntry.getDbId()] = dbEntry
+
         elif self.operation.get()==5:
             # Keep columns
             keepList=[x.strip() for x in self.keepColumns.get().split()]
@@ -151,6 +160,7 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
                     add = add and not dbEntry.getDbId() in outputDict
                 if add:
                     outputDict[dbEntry.getDbId()] = dbEntry
+
         elif self.operation.get()==6:
             # Filter columns
             referenceValue = self.filterValue.get()
@@ -172,6 +182,15 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
                     value = int(value)
 
                 filterOp = self.filterOp.get()
+
+                if filterOp == 6:
+                    referenceValue2 = self.filterValue2.get()
+
+                    if isinstance(value, float):
+                        referenceValue2 = float(referenceValue2)
+                    elif isinstance(value, int):
+                        referenceValue2 = int(referenceValue2)
+
                 if filterOp == 0: # ==
                     add = value==referenceValue
                 elif filterOp == 1: # >
@@ -184,17 +203,19 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
                     add = value <= referenceValue
                 elif filterOp == 5:  # !=
                     add = value != referenceValue
-                elif filterOp == 6:  #startswith
+                elif filterOp == 6:  # between
+                    add = (value <= referenceValue and value >= referenceValue2)
+                elif filterOp == 7:  #startswith
                     add = value.startswith(referenceValue)
-                elif filterOp == 7:  # endswith
+                elif filterOp == 8:  # endswith
                     add = value.endswith(referenceValue)
-                elif filterOp == 8:  # contains
+                elif filterOp == 9:  # contains
                     add = referenceValue in value
-                elif filterOp == 9:  # does not startswith
+                elif filterOp == 10:  # does not startswith
                     add = not (value.startswith(referenceValue))
-                elif filterOp == 10:  # does not endswith
+                elif filterOp == 11:  # does not endswith
                     add = not (value.endswith(referenceValue))
-                elif filterOp == 11:  # does not contains
+                elif filterOp == 12:  # does not contains
                     add = not (referenceValue in value)
 
                 if self.removeDuplicates.get():
@@ -202,8 +223,20 @@ class ProtBioinformaticsListIDOperate(EMProtocol):
                 if add:
                     outputDict[dbEntry.getDbId()] = dbEntry
 
+
         outputDatabaseID = SetOfDatabaseID().create(path=self._getPath())
-        for dbId in outputDict:
-            outputDatabaseID.append(outputDict[dbId])
+
+        if self.operation.get() == 1:
+            for entry in range(len(outputList)):
+                outputDatabaseID.append(outputList[entry])
+        else:
+            for dbId in outputDict:
+                outputDatabaseID.append(outputDict[dbId])
+
         self._defineOutputs(output=outputDatabaseID)
-        self._defineSourceRelation(self.inputListID, outputDatabaseID)
+
+        if self.operation.get() == 1:
+            for inputListID in self.multipleInputListID:
+                self._defineSourceRelation(inputListID, outputDatabaseID)
+        else:
+            self._defineSourceRelation(self.inputListID, outputDatabaseID)

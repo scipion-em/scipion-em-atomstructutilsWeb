@@ -29,8 +29,6 @@ from pathlib import Path
 import webbrowser
 
 from bioinformatics.protocols.protocol_dali import ProtBioinformaticsDali
-from bioinformatics.objects import DatabaseID, SetOfDatabaseID
-import pyworkflow.object as pwobj
 from pyworkflow.viewer import DESKTOP_TKINTER, ProtocolViewer
 from pyworkflow.protocol.params import StringParam
 
@@ -67,7 +65,7 @@ class ProtBioinformaticsDaliViewer(ProtocolViewer):
         import os
         views = []
         fnBaseDir = self.getResultsDir()
-        if not fnBaseDir:
+        if fnBaseDir: #change not
             if os.path.exists(self.protocol._getExtraPath(DALISERVER)):
                 os.system("rm -rf %s"%self.protocol._getExtraPath(DALISERVER))
             url=self.url.get()
@@ -78,7 +76,7 @@ class ProtBioinformaticsDaliViewer(ProtocolViewer):
         if fnBaseDir:
             webbrowser.open_new_tab(os.path.join(fnBaseDir,"index.html"))
 
-            if not hasattr(self.protocol,"outputIds"):
+            if not hasattr(self.protocol, "outputIds"):
                 for fn in Path(fnBaseDir).rglob('*.txt'):
                     self.protocol.constructOutput(str(fn), self.protocol)
         return views

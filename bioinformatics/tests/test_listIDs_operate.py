@@ -1,6 +1,6 @@
 # **************************************************************************
 # *
-# * Name:     TEST OF PROTOCOL_LIST_OPERATE.PY
+# * Name:     TEST OF PROTOCOL_LISTIDs_OPERATE.PY
 # *
 # * Authors:    Alberto M. Parra Pérez (amparraperez@gmail.com)
 # *
@@ -31,7 +31,7 @@ from pathlib import Path
 from pyworkflow.tests import *
 from pyworkflow.protocol import *
 from pwem.protocols.protocol_import import ProtImportPdb
-from bioinformatics.protocols import ProtBioinformaticsListOperate as LOperate
+from bioinformatics.protocols import ProtBioinformaticsListIDOperate as LOperate
 from bioinformatics.protocols import ProtBioinformaticsDali as DALI
 
 
@@ -65,7 +65,6 @@ class TestCreateOutput(TestImportBase):
             protocol.constructOutput(str(fn), protocol)
 
 
-
 class TestListOperate(TestCreateOutput):
 
     def test_1filter(self):
@@ -89,9 +88,10 @@ class TestListOperate(TestCreateOutput):
         self.getDalioutputs(prot1)
         prot1.setStatus(STATUS_FINISHED)
 
-        global outputDali; global outputDali2
+        global outputDali; global outputDali50; global outputDali25
         outputDali = prot1.outputDatabaseIds90
-        outputDali2 = prot1.outputDatabaseIds50
+        outputDali50 = prot1.outputDatabaseIds50
+        outputDali25 = prot1.outputDatabaseIds25
 
         self.assertIsNotNone(outputDali, "Error in creation of SetOfDatabaseID by DALI - It is NONE")
         self.assertTrue(outputDali.getSize() == 432, "The size of the SetOfDatabaseID is wrong. It should be 432 ")
@@ -100,11 +100,12 @@ class TestListOperate(TestCreateOutput):
 
 
         # SET filtering :  _DaliZscore column ( >= 40)
-        args = {'operation': 0,  # Filter
-                'inputSet':outputDali,
+        args = {'operation': 6,  # Filter
+                'inputListID': outputDali,
                 'filterColumn': '_DaliZscore',
                 'filterOp': 2,  # >=
-                'filterValue': 40}
+                'filterValue': 40,
+                'removeDuplicates': True}
 
         setf = self.newProtocol(LOperate, **args)
         self.launchProtocol(setf)
@@ -115,12 +116,13 @@ class TestListOperate(TestCreateOutput):
 
 
         # SET filtering :  _DaliZscore column ( 25 >= value <= 52 )
-        args = {'operation': 0,  # Filter
-                'inputSet': outputDali,
+        args = {'operation': 6,  # Filter
+                'inputListID': outputDali,
                 'filterColumn': '_DaliZscore',
                 'filterOp': 6,  # between
                 'filterValue': 52,
-                'filterValue2': 25}
+                'filterValue2': 25,
+                'removeDuplicates': True}
 
         setf = self.newProtocol(LOperate, **args)
         self.launchProtocol(setf)
@@ -130,11 +132,12 @@ class TestListOperate(TestCreateOutput):
         self.assertTrue(setf.getSize()==8, "Error in filtering 25 >= value <= 52 of _DaliZscore column")
 
         # SET filtering :  _pdbId column ( startwith 6)
-        args = {'operation': 0,  # Filter
-                'inputSet': outputDali,
+        args = {'operation': 6,  # Filter
+                'inputListID': outputDali,
                 'filterColumn': '_pdbId',
                 'filterOp': 7,  # startwith
-                'filterValue': "6"}
+                'filterValue': "6",
+                'removeDuplicates': True}
 
         setf = self.newProtocol(LOperate, **args)
         self.launchProtocol(setf)
@@ -144,11 +147,12 @@ class TestListOperate(TestCreateOutput):
         self.assertTrue(setf.getSize() == 57, "Error in filtering >_pdbId column. Startwith does not work")
 
         # SET filtering :  _DaliDescription column ( contains ESTERASE)
-        args = {'operation': 0,  # Filter
-                'inputSet': outputDali,
+        args = {'operation': 6,  # Filter
+                'inputListID': outputDali,
                 'filterColumn': '_DaliDescription',
                 'filterOp': 9,  # contains
-                'filterValue': "ESTERASE"}
+                'filterValue': "ESTERASE",
+                'removeDuplicates': True}
 
         setf = self.newProtocol(LOperate, **args)
         self.launchProtocol(setf)
@@ -158,14 +162,68 @@ class TestListOperate(TestCreateOutput):
         self.assertTrue(setf.getSize() == 104, "Error in filtering _DaliDescription column searching the ESTERASE word")
 
 
-    def test_2keepcolumns(self):
-        """2. Keep only 2 columns and all entries
+    def test_2Unique(self):
+        """2. Keep unique entries regarding the DbId column
+        """
+        print("\n Keeping unique entries regarding the DbId column ")
+
+        # Unique :  _pdbId column
+        args = {'operation': 0,
+                'inputListID': outputDali,
+                'removeDuplicates': False
+                }
+
+        setf = self.newProtocol(LOperate, **args)
+        self.launchProtocol(setf)
+        setf = setf.output
+
+        self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
+        self.assertTrue(setf.getSize() == 432,
+                        "Error in creation of a new SetOfDatabaseID. It has removed not unique entries")
+
+
+    def test_3Union(self):
+        """3. Union of different SetOfDatabaseID with remove duplicates or not
+        """
+        print("\n Union of 2 different SetOfDatabaseID with and without control of duplicates")
+
+        args = {'operation': 1,
+                'multipleInputListID': [outputDali50, outputDali25],
+                'removeDuplicates': False
+                }
+
+        setf = self.newProtocol(LOperate, **args)
+        self.launchProtocol(setf)
+        setf = setf.output
+
+        self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
+        self.assertTrue(setf.getSize() == 468, "Error in the union of 2 SetOfDatabaseID")
+
+
+        # Removing duplicate entries
+
+        args = {'operation': 1,
+                'multipleInputListID':  [outputDali50, outputDali25],
+                'removeDuplicates': True
+                }
+
+        setf = self.newProtocol(LOperate, **args)
+        self.launchProtocol(setf)
+        setf = setf.output
+
+        self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
+        self.assertTrue(setf.getSize() == 320, "Error in the union of 2 SetOfDatabaseID")
+
+
+    def test_4KeepColumns(self):
+        """4. Keep only 2 columns and all entries
         """
         print("\n Keeping 2 interesting columns in a new SetOfDatabaseID")
 
         # Keep_column :  _pdbId column
-        args = {'operation': 1,
-                'inputSet': outputDali,
+        args = {'operation': 5,
+                'inputListID': outputDali,
+                'removeDuplicates': True,
                 'keepColumns': '_pdbId ; _DaliZscore'
                 }
 
@@ -173,22 +231,21 @@ class TestListOperate(TestCreateOutput):
         self.launchProtocol(setf)
         setf = setf.output
 
-
         self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
         self.assertTrue(setf.getSize() == 432, "Error in creation of a new SetOfDatabaseID. It is different from the original regarding the number of entries")
         n_columns = len(list(setf.getFirstItem().getAttributes()))
         self.assertTrue(n_columns == 2+2, "Error. The number on columns is wrong. It should be 4") #2 fixed columns + 2 given
 
 
-    def test_3unique(self):
-        """3. Keep unique entries in 1 column
+    def test_5Intersection(self):
+        """6. Intersection between 2 different SetOfDatabaseID
         """
-        print("\n Keeping unique entries in 1 column in a new SetOfDatabaseID. No biological sense")
+        print("\n Intersection between 2 different SetOfDatabaseID with control of duplicates")
 
-
-        args = {'operation': 2,  # Unique
-                'inputSet': outputDali,
-                'filterColumn': '_DaliDescription'
+        args = {'operation': 2,
+                'inputListID': outputDali,
+                'inputListID2': outputDali50,
+                'removeDuplicates': True
                 }
 
         setf = self.newProtocol(LOperate, **args)
@@ -196,40 +253,18 @@ class TestListOperate(TestCreateOutput):
         setf = setf.output
 
         self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
-        self.assertTrue(setf.getSize() == 302, "Error in creation of a new SetOfDatabaseID. There is not unique entries")
+        self.assertTrue(setf.getSize() == 311, "Error in the intersection of 2 SetOfDatabaseID")
 
 
-    def test_4top(self):
-        """4. Keep 10 top and 10 top 5% entries regarding 1 column
+    def test_6Difference(self):
+        """6. Difference between 2 different SetOfDatabaseID
         """
-        print("\n Keeping a number (10 or 5%) of entries regarding if it is in the top  regarding 1 column")
+        print("\n Difference between 2 different SetOfDatabaseIDs removing duplicates")
 
-        # Keep 10 top entries :
         args = {'operation': 3,
-                'inputSet': outputDali,
-                'filterColumn': '_DaliZscore',
-                'N': 10
-                }
-
-        setf = self.newProtocol(LOperate, **args)
-        self.launchProtocol(setf)
-        setf = setf.output
-
-
-        self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
-        self.assertTrue(setf.getSize() == 10, "Error in creation of a new SetOfDatabaseID. The number of entries is not the indicated one")
-
-        for entry in setf:
-            first_value = entry.getAttributeValue('_DaliZscore')
-            break
-
-        self.assertTrue(first_value == 51.4, "Failed to extract all top 10 entries regarding _DaliZscorecolumn")
-
-        # Keep 5 % top entries :
-        args = {'operation': 5,
-                'inputSet': outputDali,
-                'filterColumn': '_DaliZscore',
-                'N': 10
+                'inputListID': outputDali,
+                'inputListID2': outputDali50,
+                'removeDuplicates': True
                 }
 
         setf = self.newProtocol(LOperate, **args)
@@ -237,24 +272,19 @@ class TestListOperate(TestCreateOutput):
         setf = setf.output
 
         self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
-        self.assertTrue(setf.getSize() == 23, "Error in creation of a new SetOfDatabaseID. There is not unique entries")
-
-        for entry in setf:
-            first_value = entry.getAttributeValue('_DaliZscore')
-            break
-
-        self.assertTrue(first_value == 51.4, "Failed to extract all 5% top 10 entries regarding _DaliZscorecolumn")
+        self.assertTrue(setf.getSize() == 121, "Error in the difference of 2 SetOfDatabaseID")
 
 
-    def test_5count(self):
-        """5. Count the number of same entries
+    def test_7ChangeDbID(self):
+        """7. Change the reference column in the SetOfDatabaseIDs
         """
-        print("\n Count the number of same entries regarding 1 column")
+        print("\n Change the reference column in the SetOfDatabaseIDs")
 
-
-        args = {'operation': 7,
-                'inputSet': outputDali,
-                'filterColumn': '_DaliZscore'
+        args = {'operation': 4,
+                'inputListID': outputDali,
+                'newDb': "uniprot",
+                'newDbId': "_DaliDescription",
+                'removeDuplicates': True
                 }
 
         setf = self.newProtocol(LOperate, **args)
@@ -262,71 +292,4 @@ class TestListOperate(TestCreateOutput):
         setf = setf.output
 
         self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
-        self.assertTrue(setf.getSize() == 432, "Error in creation of a new SetOfDatabaseID.")
-        n_columns = len(list(setf.getFirstItem().getAttributes()))
-        self.assertTrue(n_columns == 2+9+1, "Column count was not created") #2 fixed columns + 9 given + 1 count
-
-
-    def test_6intersect(self):
-        """6. Intersect 2 SetOfDatabaseID using the column called _pdbId
-        """
-        print("\n Intersect 2 SetOfDatabaseID using 1 column")
-
-        args = {'operation': 8,
-                'inputSet': outputDali,
-                'secondSet': outputDali2,
-                'filterColumn': '_pdbId' # Without chain information. With that info there is only 1 difference (311 in intersection 312 in 50%)
-                }
-
-        setf = self.newProtocol(LOperate, **args)
-        self.launchProtocol(setf)
-        setf = setf.output
-
-        self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
-        self.assertTrue(setf.getSize() == 314, "Error in creation of a new SetOfDatabaseID. The intersection was wrong")
-
-
-    def test_7sort(self):
-        """7. Sort (Ascending or Descending way) a SetOfDatabaseID regarding 1 column (_DaliZscore)
-        """
-        print("\n Sort a SetOfDatabaseID regarding 1 column (Ascending or Descending way)")
-
-        args = {'operation': 9,
-                'inputSet': outputDali,
-                'filterColumn': '_DaliZscore',# Without chain information. With that info there is only 1 difference (311 in intersection 312 in 50%)
-                'direction': 0 #ascending
-                }
-
-        setf = self.newProtocol(LOperate, **args)
-        self.launchProtocol(setf)
-        setf = setf.output
-
-        self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
-        self.assertTrue(setf.getSize() == 432, "Error in creation of a new SetOfDatabaseID")
-
-        for entry in setf:
-            first_value = entry.getAttributeValue('_DaliZscore')
-            break
-
-        self.assertTrue(first_value == 2.1, "Failed to sort (ascending) the SetDatabaseID regarding _DaliZscorecolumn")
-
-
-        args = {'operation': 9,
-                'inputSet': outputDali,
-                'filterColumn': '_DaliZscore',# Without chain information. With that info there is only 1 difference (311 in intersection 312 in 50%)
-                'direction': 1 #descending
-                }
-
-        setf = self.newProtocol(LOperate, **args)
-        self.launchProtocol(setf)
-        setf = setf.output
-
-        self.assertIsNotNone(setf, "Error in creation of a new SetOfDatabaseID - It is NONE")
-        self.assertTrue(setf.getSize() == 432, "Error in creation of a new SetOfDatabaseID")
-
-        for entry in setf:
-            first_value = entry.getAttributeValue('_DaliZscore')
-            break
-
-        self.assertTrue(first_value == 51.4, "Failed to sort (descending) the SetDatabaseID regarding _DaliZscorecolumn")
-
+        self.assertTrue(setf.getSize() == 302, "Error in the difference of 2 SetOfDatabaseID")
