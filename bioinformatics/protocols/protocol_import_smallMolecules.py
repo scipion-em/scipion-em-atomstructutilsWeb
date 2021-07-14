@@ -46,7 +46,9 @@ class ProtBioinformaticsImportSmallMolecules(EMProtocol):
     def _defineParams(self, form):
         form.addSection(label='Input')
         form.addParam('multiple', BooleanParam, default=True,
-                      label='Each file is a molecule')
+                      label='Each file is a molecule',
+                      help ="If you have multi mol2 or multi sdf downloaded from ZINC15,"
+                            "you can use this option to separate the files")
         form.addParam('filesPath', PathParam, condition='multiple',
                       label="Files directory",
                       help="Directory with the files you want to import.\n\n"
@@ -105,8 +107,9 @@ class ProtBioinformaticsImportSmallMolecules(EMProtocol):
                             fname_small = self._getExtraPath("%s.mol2" %zincID)
                             f_small = open(fname_small, 'w+')
                             f_small.write(line)
+                        else:
+                            f_small.write(line)
 
-                        f_small.write(line)
                         try:
                             if lines[i+1].startswith("@<TRIPOS>MOLECULE"):
                                 f_small.close()
@@ -127,11 +130,14 @@ class ProtBioinformaticsImportSmallMolecules(EMProtocol):
                         lines2write.append(i)
 
                         if line.startswith("$$$$"):
+
                             zincID = lines[i-5].split()[0]
                             fname_small = self._getExtraPath("%s.sdf" % zincID)
+
                             f_small = open(fname_small, 'w+')
                             for l in lines2write:
                                 f_small.write(lines[l])
+
 
                             lines2write = []
                             f_small.close()

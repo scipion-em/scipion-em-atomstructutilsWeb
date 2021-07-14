@@ -42,3 +42,5 @@ from .protocol_ZINC_filter import ProtBioinformaticsZINCFilter
 from .protocol_autodock import ProtBioinformaticsAutodock
 from .protocol_pubchem_search import ProtBioinformaticsPubChemSearch
 from .protocol_export_csv import ProtBioinformaticsExportCSV
+from .protocol_ZINCdownload import ZINC_download
+from .protocol_intersectDARC import ProtBioinformaticsDARCPath
